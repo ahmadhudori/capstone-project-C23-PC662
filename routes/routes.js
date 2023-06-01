@@ -1,54 +1,110 @@
 const express = require('express');
 const router = express.Router();
-const { initializeApp } = require( "firebase/app");
+const bcrypt = require("bcrypt");
 //const function = require('./function')
 
-const { getDatabase, ref, set, onValue, remove } = require( "firebase/database");
-const firebaseConfig = {
-    databaseURL: "https://capstone-project-c23-pc662-default-rtdb.asia-southeast1.firebasedatabase.app/",
-  };
-  
-const app = initializeApp(firebaseConfig);
-const db = getDatabase();
+var admin = require("firebase-admin");
+
+var serviceAccount = require("../serviceAccountKey.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://capstone-project-c23-pc662-default-rtdb.asia-southeast1.firebasedatabase.app"
+});
+
+const db = admin.firestore();
+let userRef = db.collection("users");
+
 const today = new Date(Date.now()+420*60000);
 
 router.get("/dashboard", (req, res) => {
     res.status(200).json({"message": "hi"})
 })
 
-router.get("/getAllusers",(req,res) =>{
-    const reference = ref(db,'users/user')
-    onValue(reference, (snapshot) => {
-        const data = snapshot.val();
-        console.log(typeof(data));
-        // console.log(data);
-        res.status(200).json({"data":data});
+router.get("/getAllusers", async(req,res) =>{
+    let userData=[];
+    userRef.get().then((querySnapshot)=>{
+        querySnapshot.forEach(document =>{
+            // console.log(document.data());
+            userData.push(document.data());
+        });
     })
+    .then(function(){
+        res.status(200).json({"data":userData})
+    })
+    .catch(error=> res.send(error).status(500))
 })
+
+function makeid(length) {
+    let result = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    let counter = 0;
+    while (counter < length) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+      counter += 1;
+    }
+    return result;
+}
 
 router.post("/adduser", (req, res) => {
     const name = req.body.name;
-    const usern = req.body.username;
+    const email = req.body.email;
     const pass = req.body.password;
-    const userId = req.body.userId;
-    const reference = ref(db, 'users/user/' + userId);
+    const userId = makeid(15);
+    if(!req.body.name||!req.body.password||!req.body.email){
+        res.status(400).json({"message":"please fill every fields"});
+    }else{
+        const data = {id:userId, name:name, email:email};
+        bcrypt.hash(pass, 10, function(err, hash) {
+            userRef.where("email","==",email).get().then(doc=>{
+                if (doc.empty) {
+                    userRef.doc(data.id.toString()).set({id:userId, name:name, email:email, pass:hash, createdAt:today.toISOString()})
+                    .then(res.status(201).json({"message":"user added", "data":data}));
+                }
+                else{
+                    res.status(400).json({"message":"user already existed"});
+                }
+            });
+        })
+    }
+    
+})
 
-    set(reference,{
-        id : userId,
-        dateCreated : today.toISOString(),
-        nama : name,
-        password : pass,
-        username : usern
-    })
-    res.send('user added').status(200);
+router.get("/findUser", (req, res) => {
+    const email = req.body.email;
+    const pass = req.body.password;
+    userRef.where("email","==",email).get().then(doc=>{
+        if (doc.empty) {
+            // console.log('No matching documents.');
+            res.status(404).send("user not found");
+          }
+        doc.forEach(document =>{
+            console.log(document.data());
+            res.status(200).json({"message":"user found","data":document.data()});
+        });
+    });
 })
 
 router.delete("/deleteUser",(req,res)=>{
-    const reference = ref(db,'users/user/'+ '21');
-    remove(reference).then(() => {
-      console.log(reference+'removed');
+    const email = req.body.email;
+    const pass = req.body.password;
+    userRef.where("email","==",email).get().then(doc=>{
+        if (doc.empty) {
+            // console.log('No matching documents.');
+            res.status(404).json({"message":"user not found"});
+          }
+        doc.forEach(document =>{
+            // console.log(document.data());
+            bcrypt.compare(pass, document.data().pass, function(err, result){
+                if(result){
+                    userRef.doc(document.data().id).delete();
+                    res.status(200).json({"message":"user deleted"});
+                } 
+                else res.status(400).json({"message":"user not deleted, wrong password"});
+            });  
+        });
     });
-    res.status(200).send('user deleted');
 })
 
 module.exports = router

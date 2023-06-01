@@ -11,7 +11,7 @@ app.use(bodyParser.json())
 app.use(routes)
 
 app.get("/", (req, res) => {
-    res.send("Response Success!")
+    res.status(200).send("Response Success!")
 })
 
 const PORT = process.env.PORT || 8000
