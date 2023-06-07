@@ -1,22 +1,19 @@
+var jwt = require('jsonwebtoken');
+const express = require('express');
 const bcrypt = require("bcrypt");
-async function hashPassword(plaintextPassword) {
-    bcrypt.hash(plaintextPassword, 10)
-        .then(hash => {
-            // Store hash in the database
-            console.log(hash);
-            return hash;
-        })
-        .catch(err => {
-            console.log(err)
-        })
-}
-function comparePassword(plaintextPassword, hash) {
-    bcrypt.compare(plaintextPassword, hash, function(err, result){
-        if(result) console.log("It matches!");
-        else console.log("Invalid")
-    });
- }
+var secret = "testing-secret";
 
-// console.log("halo");
-comparePassword("dori","$2b$10$8qezmAB1UbJCcEuzG4Lh0eCjA1CBXL9H7sOP7yaZJlStwMNgPaq6e");
-
+var token = jwt.sign({ foo: 'bar', test:'barrr'}, secret,{expiresIn: '1d'});
+console.log(token);
+var x="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiJiYXIiLCJ0ZXN0IjoiYmFycnIiLCJpYXQiOjE2ODYwNzA0OTgsImV4cCI6MTY4NjA3MDQ5OX0.9V6zawpJx9YJcyx2CK3R3ec_yENVNBAvbR7rVjEjX3E";
+try {
+    var decoded = jwt.verify(x, secret);
+    console.log(decoded);
+    // tgl = new Date(1685894990);
+    // console.log(tgl.toISOString());
+} catch(err) {
+    // err
+        console.log(err);}
+// }finally{
+//     console.log(Date.now());
+// }
