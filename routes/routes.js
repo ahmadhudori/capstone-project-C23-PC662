@@ -4,6 +4,15 @@ const bcrypt = require("bcrypt");
 var jwt = require('jsonwebtoken');
 var secret = "testing-secret";
 //const function = require('./function')
+const multer = require('multer');
+const { Storage } = require('@google-cloud/storage');
+const path = require('path');
+const pathKey = path.resolve('./serviceAccountKey.json');
+const upload = multer({ storage: multer.memoryStorage() });
+const storage = new Storage({
+  projectId: 'capstone-project-c23-pc662',
+  keyFilename: pathKey
+});
 
 var admin = require("firebase-admin");
 
@@ -186,7 +195,7 @@ router.post("/login", (req, res) => {
     const pass = req.body.password;
     userRef.where("email","==",email).get().then(doc=>{
         if (doc.empty) {
-            res.status(404).send("email/password incorrect");
+            res.status(404).json({"message":"email/password incorrect"});
           }
           doc.forEach(document =>{
             (async () => {
@@ -266,5 +275,60 @@ router.put("/updateProfile", (req, res) => {
     }).catch(error=> res.status(500).send(error));;
     }
 })
+
+router.post('/uploadProfileImage', upload.single('profile'), (req, res) => {
+    const bucketName = 'capstone_profile_image'; 
+    const today = new Date(Date.now()+420*60000);
+    const file = req.file;
+    const bearer = req.header('authorization');
+
+    if(!bearer){
+        res.status(400).json({"message":"token required"});
+    }else{
+        token = bearer.split(" ")[1];
+        try {
+            var decoded = jwt.verify(token, secret);
+            // console.log(decoded);
+        } catch(err) {
+            // console.log(decoded);
+            res.status(400).json(err);
+        }
+        userRef.where("email","==",decoded.email).get().then(doc=>{
+            if (doc.empty) {
+                res.status(400).json({"message":"invalid token"})
+            }else{
+                if(!file){
+                    res.status(400).json({"message":"please fill profile fields"});
+                }else{
+                    const filename = file.originalname;
+                    const filetype = filename.split(".")[1];
+                    if(filetype!=="jpg"&&filetype!=="jpeg"&&filetype!=="png"){
+                        res.status(400).json({"status":"image type must be .jpg/.jpeg/.png"})
+                    }
+                    const blob = storage.bucket(bucketName).file("img_"+makeid(10)+"."+filetype);
+                    const blobStream = blob.createWriteStream({
+                    resumable: false,
+                    gzip: true,
+                    });
+                
+                    blobStream.on('error', (err) => {
+                    console.error(err);
+                    res.status(500).send('Error uploading file.');
+                    });
+                
+                    blobStream.on('finish', () => {
+                    const publicUrl = `https://storage.googleapis.com/${bucketName}/${blob.name}`;
+                    doc.forEach(document =>{
+                        userRef.doc(document.data().id).update({imageUrl:publicUrl, updatedAt: today.toISOString()});
+                        res.status(200).json({ "message":"profile image berhasil diupdate","imageUrl": publicUrl });
+                    });
+                    });
+                
+                    blobStream.end(file.buffer);
+                }
+            }
+        });
+    }
+  });
 
 module.exports = router

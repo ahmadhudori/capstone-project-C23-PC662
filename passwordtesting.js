@@ -1,19 +1,22 @@
-var jwt = require('jsonwebtoken');
-const express = require('express');
-const bcrypt = require("bcrypt");
-var secret = "testing-secret";
 
-var token = jwt.sign({ foo: 'bar', test:'barrr'}, secret,{expiresIn: '1d'});
-console.log(token);
-var x="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb28iOiJiYXIiLCJ0ZXN0IjoiYmFycnIiLCJpYXQiOjE2ODYwNzA0OTgsImV4cCI6MTY4NjA3MDQ5OX0.9V6zawpJx9YJcyx2CK3R3ec_yENVNBAvbR7rVjEjX3E";
-try {
-    var decoded = jwt.verify(x, secret);
-    console.log(decoded);
-    // tgl = new Date(1685894990);
-    // console.log(tgl.toISOString());
-} catch(err) {
-    // err
-        console.log(err);}
-// }finally{
-//     console.log(Date.now());
-// }
+// The ID of your GCS bucket
+const bucketName = 'api-image-c23-pc662';
+
+// The path to your file to upload
+const filePath = 'img-profile/flower.jpg';
+
+// The new ID for your GCS file
+const destFileName = 'abcd.jpg';
+
+// Imports the Google Cloud client library
+const {Storage} = require('@google-cloud/storage');
+
+// Creates a client
+const storage = new Storage({
+    keyFilename:"./serviceAccountKey.json",
+    projectId:"capstone-project-c23-pc662"
+});
+
+// storage.getBuckets().then(x=>console.log(x));
+const imgbucket = storage.bucket('api-image-c23-pc662');
+console.log(imgbucket);
