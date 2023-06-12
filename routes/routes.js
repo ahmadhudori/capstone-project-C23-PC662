@@ -17,6 +17,7 @@ const storage = new Storage({
 var admin = require("firebase-admin");
 
 var serviceAccount = require("../serviceAccountKey.json");
+const { BucketExceptionMessages } = require('@google-cloud/storage/build/src/bucket');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -288,9 +289,7 @@ router.post('/uploadProfileImage', upload.single('profile'), (req, res) => {
         token = bearer.split(" ")[1];
         try {
             var decoded = jwt.verify(token, secret);
-            // console.log(decoded);
         } catch(err) {
-            // console.log(decoded);
             res.status(400).json(err);
         }
         userRef.where("email","==",decoded.email).get().then(doc=>{
@@ -303,7 +302,7 @@ router.post('/uploadProfileImage', upload.single('profile'), (req, res) => {
                     const filename = file.originalname;
                     const filetype = filename.split(".")[1];
                     if(filetype!=="jpg"&&filetype!=="jpeg"&&filetype!=="png"){
-                        res.status(400).json({"status":"image type must be .jpg/.jpeg/.png"})
+                        res.status(400).json({"message":"image type must be .jpg/.jpeg/.png"})
                     }
                     const blob = storage.bucket(bucketName).file("img_"+makeid(10)+"."+filetype);
                     const blobStream = blob.createWriteStream({
@@ -319,8 +318,11 @@ router.post('/uploadProfileImage', upload.single('profile'), (req, res) => {
                     blobStream.on('finish', () => {
                     const publicUrl = `https://storage.googleapis.com/${bucketName}/${blob.name}`;
                     doc.forEach(document =>{
+                        if(document.data().imageUrl){
+                            deleteImg(document.data().imageUrl);
+                        }
                         userRef.doc(document.data().id).update({imageUrl:publicUrl, updatedAt: today.toISOString()});
-                        res.status(200).json({ "message":"profile image berhasil diupdate","imageUrl": publicUrl });
+                        res.status(200).json({ "message":"profile image sucessfully updated","imageUrl": publicUrl });
                     });
                     });
                 
@@ -330,5 +332,84 @@ router.post('/uploadProfileImage', upload.single('profile'), (req, res) => {
         });
     }
   });
+
+  router.get("/profile", (req, res) => {
+    const bearer = req.header('authorization');
+
+    if(!bearer){
+        res.status(400).json({"message":"token required"});
+    }else{
+        token = bearer.split(" ")[1];
+        try {
+            var decoded = jwt.verify(token, secret);
+        } catch(err) {
+            // console.log(err);
+            res.status(400).json(err);
+        }
+        userRef.where("email","==",decoded.email).get().then(doc=>{
+        if (doc.empty) {
+            res.status(400).json({"message":"invalid token"})
+        }
+        doc.forEach(document =>{
+            res.status(200).json({
+            "id": document.data().id,
+            "name": document.data().name,
+            "email": document.data().email,
+            "imageUrl": document.data().imageUrl,
+            "createdAt": document.data().createdAt,
+            "updatedAt": document.data().updatedAt});
+        });
+    }).catch(error=> res.status(500).send(error));;
+    }
+})
+
+function deleteImg(imgurl){
+    var filename = imgurl.split('/')[4];
+    const bucketName = 'capstone_profile_image'; 
+    storage.bucket(bucketName).file(filename).delete();
+
+}
+/*router.get("/deleteimg", (req,res)=>{
+    deleteImg("https://storage.googleapis.com/capstone_profile_image/img_tJE3PlIynw.jpg");
+    res.status(200).send("ok");
+})
+
+router.get("/deleteimg2", (req, res) => {
+    const bearer = req.header('authorization');
+
+    if(!bearer){
+        res.status(400).json({"message":"token required"});
+    }else{
+        token = bearer.split(" ")[1];
+        try {
+            var decoded = jwt.verify(token, secret);
+        } catch(err) {
+            // console.log(err);
+            res.status(400).json(err);
+        }
+        userRef.where("email","==",decoded.email).get().then(doc=>{
+        if (doc.empty) {
+            res.status(400).json({"message":"invalid token"})
+        }
+        doc.forEach(document =>{
+            // var url = "https://storage.googleapis.com/capstone_profile_image/img_OOz6Kg4XNU.jpg";
+            // deleteImg(url);
+            if(document.data().imageUrl){
+                deleteImg(document.data().imageUrl);
+                res.status(200).json({"img":document.data().imageUrl+" deleted"});
+            }else{
+                res.status(200).json({"img":"no image"});
+            }
+            // res.status(200).json({
+            // "id": document.data().id,
+            // "name": document.data().name,
+            // "email": document.data().email,
+            // "imageUrl": document.data().imageUrl,
+            // "createdAt": document.data().createdAt,
+            // "updatedAt": document.data().updatedAt});
+        });
+    }).catch(error=> res.status(500).send(error));;
+    }
+})*/
 
 module.exports = router
