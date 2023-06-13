@@ -4,6 +4,7 @@ from PIL import Image
 from io import BytesIO
 import numpy as np
 import tensorflow as tf
+import requests
 # from tensorflow.keras.applications.efficientnet import preprocess_input, decode_predictions
 
 app = FastAPI()
