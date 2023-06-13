@@ -20,6 +20,9 @@ app.add_middleware(
     allow_headers=headers,
 )
 
+url = "https://storage.googleapis.com/model-api-c23-pc662/model.h5"
+r = requests.get(url, allow_redirects=True)
+
 model = tf.keras.models.load_model('model.h5')
 class_names = ['ayam bakar', 'ayam_goreng', 'ayam_pop', 'buncis', 'daging_rendang', 'dendeng_batokok', 'gulai_ikan', 'gulai_tambusu', 'gulai_tunjang', 'mie goreng', 'perkedel', 'sambal goreng kentang', 'sate', 'sayur asam', 'sayur bayam', 'sayur lodeh', 'sayur sop', 'tahu', 'telur_balado', 'telur_dadar', 'terong balado', 'tongkol balado', 'tumis kangkung', 'usus ayam bumbu kuning']
 
