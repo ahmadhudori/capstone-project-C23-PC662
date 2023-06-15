@@ -56,7 +56,10 @@ async def predict(file: UploadFile = None):
     for i in range(len(prediction[0])):
         class_name_and_probability.append({"class_name": class_names[i], "probability": float(prediction[0][i]), "calories": calories_per_class_names[i]})
     predicted_class = class_name_and_probability[np.argmax(prediction[0])]
-    return {"predicted_class": predicted_class, "class_name_and_probability": class_name_and_probability, "class_with_probability_more_than_1": class_with_probability_more_than_1}
+    total_calories_from_class_with_probability_more_than_1 = 0
+    for i in range(len(class_with_probability_more_than_1)):
+        total_calories_from_class_with_probability_more_than_1 += class_with_probability_more_than_1[i]["calories"]
+    return {"predicted_class": predicted_class, "class_name_and_probability": class_name_and_probability, "class_with_probability_more_than_1": class_with_probability_more_than_1, "total_calories_from_class_with_probability_more_than_1": total_calories_from_class_with_probability_more_than_1}
 
     
 
