@@ -49,10 +49,14 @@ async def predict(file: UploadFile = None):
     image = tf.keras.applications.efficientnet_v2.preprocess_input(image)
     prediction = model.predict(image)
     class_name_and_probability = []
+    class_with_probability_more_than_1 = []
+    for i in range(len(prediction[0])):
+        if prediction[0][i] > 1.0:
+            class_with_probability_more_than_1.append({"class_name": class_names[i], "probability": float(prediction[0][i]), "calories": calories_per_class_names[i]})
     for i in range(len(prediction[0])):
         class_name_and_probability.append({"class_name": class_names[i], "probability": float(prediction[0][i]), "calories": calories_per_class_names[i]})
     predicted_class = class_name_and_probability[np.argmax(prediction[0])]
-    return {"predicted_class": predicted_class, "class_name_and_probability": class_name_and_probability}
+    return {"predicted_class": predicted_class, "class_name_and_probability": class_name_and_probability, "class_with_probability_more_than_1": class_with_probability_more_than_1}
 
     
 
