@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">Capstone Project</string>
+    <string name="Register">Sign Up</string>
+    <string name="Login">Sign In</string>
+    <string name="if_dont_have_account">if dont have account ?</string>
+    <string name="register">Register</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="profile">Profile</string>
+    <string name="nama">Name</string>
+    <string name="email">Email</string>
+    <string name="edit_profile">Edit Profile</string>
+    <string name="login">Login</string>
+    <string name="logout">Logout</string>
+    <string name="menu_home">Home</string>
+    <string name="menu_history">History</string>
+    <string name="history">History</string>
+    <string name="date">Date</string>
+    <string name="result">Result</string>
+    <string name="tanggal">16 Juni 2023</string>
+    <string name="deteksi_kalori_makanan">Deteksi Kalori Makanan</string>
+    <string name="camera">Camera</string>
+    <string name="gallery">Gallery</string>
+    <string name="berikutnya">Berikutnya</string>
+</resources>
