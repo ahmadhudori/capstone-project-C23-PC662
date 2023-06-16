@@ -1,11 +1,16 @@
 const express = require('express');
+const unirest = require('unirest');
+const axios = require('axios');
+var request = require('request');
 const router = express.Router();
 const bcrypt = require("bcrypt");
+const fs = require('fs');
 var jwt = require('jsonwebtoken');
 var secret = "testing-secret";
 //const function = require('./function')
 const multer = require('multer');
 const { Storage } = require('@google-cloud/storage');
+const FormData = require('form-data');
 const path = require('path');
 const pathKey = path.resolve('./serviceAccountKey.json');
 const upload = multer({ storage: multer.memoryStorage() });
@@ -13,6 +18,7 @@ const storage = new Storage({
   projectId: 'capstone-project-c23-pc662',
   keyFilename: pathKey
 });
+
 
 var admin = require("firebase-admin");
 
@@ -60,112 +66,6 @@ async function hashPass(plain){
 async function compareHash(plain, hash){
     return bcrypt.compare(plain,hash);
 }
-/*
-router.post("/adduser", (req, res) => {
-    const today = new Date(Date.now()+420*60000);
-    const name = req.body.name;
-    const email = req.body.email;
-    const pass = req.body.password;
-    const userId = makeid(15);
-    if(!req.body.name||!req.body.password||!req.body.email){
-        res.status(400).json({"message":"please fill every fields"});
-    }else{
-        const data = {id:userId, name:name, email:email};
-        bcrypt.hash(pass, 10, function(err, hash) {
-            userRef.where("email","==",email).get().then(doc=>{
-                if (doc.empty) {
-                    userRef.doc(data.id.toString()).set({id:userId, name:name, email:email, pass:hash, createdAt:today.toISOString()})
-                    .then(res.status(201).json({"message":"user added", "data":data}));
-                }
-                else{
-                    res.status(400).json({"message":"email already existed"});
-                }
-            });
-        })
-    }
-    
-})
-
-router.get("/findUser", (req, res) => {
-    const email = req.body.email;
-    const pass = req.body.password;
-    userRef.where("email","==",email).get().then(doc=>{
-        if (doc.empty) {
-            // console.log('No matching documents.');
-            res.status(404).send("user not found");
-          }
-        doc.forEach(document =>{
-            console.log(document.data());
-            res.status(200).json({"message":"user found","data":document.data()});
-        });
-    });
-})
-
-router.delete("/deleteUser",(req,res)=>{
-    const email = req.body.email;
-    const pass = req.body.password;
-    userRef.where("email","==",email).get().then(doc=>{
-        if (doc.empty) {
-            res.status(404).json({"message":"user not found"});
-          }
-        doc.forEach(document =>{
-            (async () => {
-                if(await compareHash(pass,document.data().pass)){
-                    userRef.doc(document.data().id).delete();
-                    res.status(200).json({"message":"user deleted"});
-                }else{
-                    res.status(400).json({"message":"user not deleted, wrong password"});
-                }
-             })() 
-        });
-    });
-})
-
-router.put("/updateUser", (req, res) => {
-    const today = new Date(Date.now()+420*60000);
-    const email = req.body.email;
-    const pass = req.body.password;
-    let Uname = req.body.updatedName;
-    let Uemail = req.body.updatedEmail;
-    let Upass = req.body.updatedPass;
-
-    userRef.where("email","==",email).get().then(doc=>{
-        if (doc.empty) {
-            res.status(404).send("user not found");
-          }
-        doc.forEach(document =>{
-            (async () => {
-                if(await compareHash(pass,document.data().pass)){
-                    if(Uname||Uemail||Upass){
-                        Uname = Uname || document.data().name;
-                        Uemail = Uemail || document.data().email;
-                        if(Upass){
-                            (async () => {
-                                Upass = await hashPass(Upass);
-                                userRef.doc(document.data().id).update({name:Uname, email:Uemail, pass: Upass, updatedAt: today.toISOString()});
-                                res.status(200).json({"message":"user updated"});
-                            })()
-                        }else{
-                            Upass = document.data().pass;
-                            userRef.doc(document.data().id).update({name:Uname, email:Uemail, pass: Upass, updatedAt: today.toISOString()});
-                            res.status(200).json({"message":"user updated"});
-                        }
-                    }else {
-                        res.status(400).json({"message":"please fill updateName/updatedEmail/updatedPass field"});
-                    }
-                }else{
-                    res.status(400).json({"message":"user not updated, wrong password"});
-                }
-             })() 
-        });
-    });
-})
-
-router.get("/test", async(req,res) =>{
-    const token = req.header('authorization').split(" ")[1];
-    // console.log(token);
-    res.status(200).send(token);
-})*/
 
 router.post("/signUp", (req, res) => {
     const today = new Date(Date.now()+420*60000);
@@ -196,7 +96,7 @@ router.post("/login", (req, res) => {
     const pass = req.body.password;
     userRef.where("email","==",email).get().then(doc=>{
         if (doc.empty) {
-            res.status(404).json({"message":"email/password incorrect"});
+            res.status(400).json({"message":"email/password incorrect"});
           }
           doc.forEach(document =>{
             (async () => {
@@ -369,13 +269,48 @@ function deleteImg(imgurl){
     storage.bucket(bucketName).file(filename).delete();
 
 }
-/*router.get("/deleteimg", (req,res)=>{
-    deleteImg("https://storage.googleapis.com/capstone_profile_image/img_tJE3PlIynw.jpg");
-    res.status(200).send("ok");
-})
+/*
+async function ml_detect(){
+    var req = unirest('POST', 'https://modelml-2ge5ruq6qa-et.a.run.app/predict')
+    .attach('file', '../img/IMG_20230101_031941.jpg')
+    .end(function (res) { 
+        if (res.error) console.log(res.error);
+        console.log(res.body.predicted_class);
+        return res.body.predicted_class;
+    });
+}
 
-router.get("/deleteimg2", (req, res) => {
+router.post("/detect", (req, res) => {
+    let xuserRef = db.collection("food_scanned");
+
+    (async () => {
+        let hasil = await ml_detect();
+        res.status(200).send(hasil);
+    })();
+    // result.status(200).json(res.body.total_calories_from_class_with_probability_more_than_1[0]); 
+    // console.log(res.body);
+    // console.log(typeof(res.body));
+    // console.log(res.body.predicted_class);
+    // console.log(res.body.total_calories_from_class_with_probability_more_than_1);
+    // console.log(res.body.class_with_probability_more_than_1[0].class_name);
+    // console.log(res.body.class_with_probability_more_than_1[0].probability);
+    // for (i of res.body.class_with_probability_more_than_1){
+    //   if(i.probability>prob){
+    //     prob = i.probability;
+    //   }
+    // }
+    // console.log(prob);
+    // console.log(res.statusCode);
+
+})*/
+
+router.post("/detectFood", upload.single('food_image'), (req, res) => {
+    const today = new Date(Date.now()+420*60000);
+    let userRef2 = db.collection("food_scanned");
+    const bucketName = 'food_scanned'; 
     const bearer = req.header('authorization');
+    const food_file = req.file;
+    var predicted, morethan1;
 
     if(!bearer){
         res.status(400).json({"message":"token required"});
@@ -391,25 +326,197 @@ router.get("/deleteimg2", (req, res) => {
         if (doc.empty) {
             res.status(400).json({"message":"invalid token"})
         }
-        doc.forEach(document =>{
-            // var url = "https://storage.googleapis.com/capstone_profile_image/img_OOz6Kg4XNU.jpg";
-            // deleteImg(url);
-            if(document.data().imageUrl){
-                deleteImg(document.data().imageUrl);
-                res.status(200).json({"img":document.data().imageUrl+" deleted"});
-            }else{
-                res.status(200).json({"img":"no image"});
+        // console.log(food_file.buffer);
+        // console.log(file);
+        if(!food_file){
+            res.status(400).json({"message":"please fill food_image field"});
+        }else{
+            const filename = food_file.originalname;
+            const filetype = filename.split(".")[1];
+            if(filetype!=="jpg"&&filetype!=="jpeg"&&filetype!=="png"){
+                res.status(400).json({"message":"image type must be .jpg/.jpeg/.png"})
             }
-            // res.status(200).json({
-            // "id": document.data().id,
-            // "name": document.data().name,
-            // "email": document.data().email,
-            // "imageUrl": document.data().imageUrl,
-            // "createdAt": document.data().createdAt,
-            // "updatedAt": document.data().updatedAt});
-        });
+            const imageData = food_file.buffer;
+            const buffer = Buffer.from(imageData, 'base64');
+            const data = new FormData();
+            data.append('file', buffer, { filename: food_file.originalname });
+
+            const url = 'https://modelml-2ge5ruq6qa-et.a.run.app/predict'; 
+
+            axios.post(url, data, {
+            headers:
+                data.getHeaders(),
+            })
+            .then(response => {
+                morethan1=[];
+                predicted = response.data.predicted_class.class_name;
+                morethan1.push(predicted);
+                var data_res;
+                for (data_res of response.data.class_with_probability_more_than_1){
+                    // morethan1.push(data_res.class_name);
+                    if ( morethan1.indexOf(data_res.class_name)==-1 ) {
+                        morethan1.push(data_res.class_name);
+                    }
+                }
+                console.log(morethan1);
+                
+                const blob = storage.bucket(bucketName).file("img_"+makeid(10)+"."+filetype);
+                    const blobStream = blob.createWriteStream({
+                    resumable: false,
+                    gzip: true,
+                    });
+                
+                    blobStream.on('error', (err) => {
+                    console.error(err);
+                    res.status(500).send('Error uploading file.');
+                    });
+                
+                    blobStream.on('finish', () => {
+                    const publicUrl = `https://storage.googleapis.com/${bucketName}/${blob.name}`;
+
+                    userRef2.doc(makeid(15)).set({"createdAt":today.toISOString(),"imageUrl":publicUrl,"totalCalorie":response.data.total_calories_from_class_with_probability_more_than_1,
+                    "food":morethan1, "user_id":decoded.id})
+                    .then(res.status(201).json({"message":"scanned completed","totalCalorie":response.data.total_calories_from_class_with_probability_more_than_1,"food":morethan1,
+                        "imageUrl":publicUrl
+                    }));
+
+                    });
+                
+                    blobStream.end(food_file.buffer);
+            })
+            .catch(error => {
+                console.error('Error:',error);
+            });
+        }
+                
     }).catch(error=> res.status(500).send(error));;
     }
-})*/
+})
+
+let predictionsRef = db.collection("food_scanned");
+
+const verifyToken = (req, res, next) => {
+    const bearer = req.header('authorization');
+  
+    if (!bearer) {
+      return res.status(400).json({ message: 'token required' });
+    }
+  
+    const token = bearer.split(' ')[1];
+  
+    try {
+      const decoded = jwt.verify(token, secret);
+      req.user = decoded;
+      next();
+    } catch (err) {
+      res.status(400).json(err);
+    }
+  };
+
+  router.get('/history', verifyToken, async (req, res) => {
+    try {
+      const userId = req.query.user_id; // Mendapatkan nilai user_id dari permintaan GET
+  
+      let query = predictionsRef; // Inisialisasi query dengan referensi koleksi 'predictions'
+  
+      if (userId) {
+        query = query.where('user_id', '==', userId); // Menambahkan filter berdasarkan user_id jika diberikan
+      }
+  
+      const snapshot = await query.get();
+      const predictions = [];
+  
+      snapshot.forEach((doc) => {
+        const predictionData = doc.data();
+        predictions.push(predictionData);
+      });
+  
+      res.status(200).json(predictions);
+    } catch (error) {
+      console.log('Error getting predictions:', error);
+      res.status(500).json({ error: 'Failed to retrieve predictions' });
+    }
+  });
+
+var result_of_api=1;
+// //call api in api
+// router.post("/detect", (req, res) => {
+//     let userRef2 = db.collection("food_scanned");
+
+//     var request = unirest('GET', 'https://app-2ge5ruq6qa-et.a.run.app/getAllUsers');
+//     request.then(function (result) { 
+//     if (result.error) console.log(result.error); 
+//     result_of_api = result.body;
+//     // console.log(result_of_api);
+//     res.status(200).send(result_of_api);
+//     });
+    
+// })
+
+function callapi(){
+    var request = unirest.post('https://modelml-2ge5ruq6qa-et.a.run.app/predict');
+    // request.field('file', fs.readFileSync('./img/IMG_20230101_031941.jpg','utf8'));
+    request.attach('file', '../img/IMG_20230421_103432.jpg')
+    .then(function (result) { 
+        if (result.error) console.log(result.error); 
+    result_of_api = result.body;
+    console.log(result_of_api);
+    res.status(200).json(result_of_api);
+    });
+}
+
+// router.post("/detect", (req, res) => {
+//     let userRef2 = db.collection("food_scanned");
+
+//     var request = unirest('GET', 'https://app-2ge5ruq6qa-et.a.run.app/getAllUsers');
+//     request.then(function (result) { 
+//     if (result.error) console.log(result.error); 
+//     result_of_api = result.body;
+//     // console.log(result_of_api);
+//     res.status(200).send(result_of_api);
+//     });
+    
+// })
+
+// router.post("/detect", upload.single('food_image'), (req, res) => {
+//     const food_file = req.file;
+//     // console.log(food_file.buffer);
+//     // console.log(file);
+//     if(!food_file){
+//         res.status(400).json("");
+//     }
+//     let userRef2 = db.collection("food_scanned");
+//     var predicted, morethan1, totalcal;
+//     const imageData = food_file.buffer;
+//     const buffer = Buffer.from(imageData, 'base64');
+//     const data = new FormData();
+//     data.append('file', buffer, { filename: food_file.originalname });
+
+//     const url = 'https://modelml-2ge5ruq6qa-et.a.run.app/predict'; // Replace with your API endpoint URL
+
+//     axios.post(url, data, {
+//     headers:
+//         data.getHeaders(),
+//     })
+//     .then(response => {
+//         console.log('Response:', response.data);
+//     })
+//     .catch(error => {
+//         console.error('Error:', error.response.data);
+//     });
+// })
+
+//
+// router.get("/pushDatabase", (req, res) => {
+//         let userRef = db.collection("foods");
+        
+//         x=["a","b","ce"];
+//         if ( x.indexOf("x")==-1 ) {
+//             x.push("x");
+//         }
+//         userRef.doc("food_calories").update({test:x})
+//         .then(res.status(201).json({"message":"data added"}));
+    
+//     })
 
 module.exports = router

@@ -138,7 +138,7 @@ not filling profile fields (**400**)
 ```
 </details>
 
-### **POST  /updateProfile**
+### **PUT  /updateProfile**
 <details>
 
 #### **Header**
