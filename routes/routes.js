@@ -1,13 +1,12 @@
 const express = require('express');
 const unirest = require('unirest');
 const axios = require('axios');
-var request = require('request');
 const router = express.Router();
 const bcrypt = require("bcrypt");
 const fs = require('fs');
 var jwt = require('jsonwebtoken');
-var secret = "testing-secret";
-//const function = require('./function')
+require("dotenv").config();
+var secret = process.env.secret_jwt;
 const multer = require('multer');
 const { Storage } = require('@google-cloud/storage');
 const FormData = require('form-data');
@@ -18,7 +17,6 @@ const storage = new Storage({
   projectId: 'capstone-project-c23-pc662',
   keyFilename: pathKey
 });
-
 
 var admin = require("firebase-admin");
 
@@ -32,20 +30,7 @@ admin.initializeApp({
 
 const db = admin.firestore();
 let userRef = db.collection("users");
-
-router.get("/getAllusers", async(req,res) =>{
-    let userData=[];
-    userRef.get().then((querySnapshot)=>{
-        querySnapshot.forEach(document =>{
-            // console.log(document.data());
-            userData.push(document.data());
-        });
-    })
-    .then(function(){
-        res.status(200).json({"data":userData})
-    })
-    .catch(error=> res.send(error).status(500))
-})
+let userRef2 = db.collection("food_scanned");
 
 function makeid(length) {
     let result = '';
@@ -66,6 +51,20 @@ async function hashPass(plain){
 async function compareHash(plain, hash){
     return bcrypt.compare(plain,hash);
 }
+
+// router.get("/getAllusers", async(req,res) =>{
+//     let userData=[];
+//     userRef.get().then((querySnapshot)=>{
+//         querySnapshot.forEach(document =>{
+//             // console.log(document.data());
+//             userData.push(document.data());
+//         });
+//     })
+//     .then(function(){
+//         res.status(200).json({"data":userData})
+//     })
+//     .catch(error=> res.send(error).status(500))
+// })
 
 router.post("/signUp", (req, res) => {
     const today = new Date(Date.now()+420*60000);
@@ -269,44 +268,9 @@ function deleteImg(imgurl){
     storage.bucket(bucketName).file(filename).delete();
 
 }
-/*
-async function ml_detect(){
-    var req = unirest('POST', 'https://modelml-2ge5ruq6qa-et.a.run.app/predict')
-    .attach('file', '../img/IMG_20230101_031941.jpg')
-    .end(function (res) { 
-        if (res.error) console.log(res.error);
-        console.log(res.body.predicted_class);
-        return res.body.predicted_class;
-    });
-}
-
-router.post("/detect", (req, res) => {
-    let xuserRef = db.collection("food_scanned");
-
-    (async () => {
-        let hasil = await ml_detect();
-        res.status(200).send(hasil);
-    })();
-    // result.status(200).json(res.body.total_calories_from_class_with_probability_more_than_1[0]); 
-    // console.log(res.body);
-    // console.log(typeof(res.body));
-    // console.log(res.body.predicted_class);
-    // console.log(res.body.total_calories_from_class_with_probability_more_than_1);
-    // console.log(res.body.class_with_probability_more_than_1[0].class_name);
-    // console.log(res.body.class_with_probability_more_than_1[0].probability);
-    // for (i of res.body.class_with_probability_more_than_1){
-    //   if(i.probability>prob){
-    //     prob = i.probability;
-    //   }
-    // }
-    // console.log(prob);
-    // console.log(res.statusCode);
-
-})*/
 
 router.post("/detectFood", upload.single('food_image'), (req, res) => {
     const today = new Date(Date.now()+420*60000);
-    let userRef2 = db.collection("food_scanned");
     const bucketName = 'food_scanned'; 
     const bearer = req.header('authorization');
     const food_file = req.file;
@@ -393,130 +357,40 @@ router.post("/detectFood", upload.single('food_image'), (req, res) => {
     }
 })
 
-let predictionsRef = db.collection("food_scanned");
-
-const verifyToken = (req, res, next) => {
+router.get("/getScanned", (req, res) => {
     const bearer = req.header('authorization');
-  
-    if (!bearer) {
-      return res.status(400).json({ message: 'token required' });
-    }
-  
-    const token = bearer.split(' ')[1];
-  
-    try {
-      const decoded = jwt.verify(token, secret);
-      req.user = decoded;
-      next();
-    } catch (err) {
-      res.status(400).json(err);
-    }
-  };
 
-  router.get('/history', verifyToken, async (req, res) => {
-    try {
-      const userId = req.query.user_id; // Mendapatkan nilai user_id dari permintaan GET
-  
-      let query = predictionsRef; // Inisialisasi query dengan referensi koleksi 'predictions'
-  
-      if (userId) {
-        query = query.where('user_id', '==', userId); // Menambahkan filter berdasarkan user_id jika diberikan
-      }
-  
-      const snapshot = await query.get();
-      const predictions = [];
-  
-      snapshot.forEach((doc) => {
-        const predictionData = doc.data();
-        predictions.push(predictionData);
-      });
-  
-      res.status(200).json(predictions);
-    } catch (error) {
-      console.log('Error getting predictions:', error);
-      res.status(500).json({ error: 'Failed to retrieve predictions' });
-    }
-  });
-
-var result_of_api=1;
-// //call api in api
-// router.post("/detect", (req, res) => {
-//     let userRef2 = db.collection("food_scanned");
-
-//     var request = unirest('GET', 'https://app-2ge5ruq6qa-et.a.run.app/getAllUsers');
-//     request.then(function (result) { 
-//     if (result.error) console.log(result.error); 
-//     result_of_api = result.body;
-//     // console.log(result_of_api);
-//     res.status(200).send(result_of_api);
-//     });
-    
-// })
-
-function callapi(){
-    var request = unirest.post('https://modelml-2ge5ruq6qa-et.a.run.app/predict');
-    // request.field('file', fs.readFileSync('./img/IMG_20230101_031941.jpg','utf8'));
-    request.attach('file', '../img/IMG_20230421_103432.jpg')
-    .then(function (result) { 
-        if (result.error) console.log(result.error); 
-    result_of_api = result.body;
-    console.log(result_of_api);
-    res.status(200).json(result_of_api);
-    });
-}
-
-// router.post("/detect", (req, res) => {
-//     let userRef2 = db.collection("food_scanned");
-
-//     var request = unirest('GET', 'https://app-2ge5ruq6qa-et.a.run.app/getAllUsers');
-//     request.then(function (result) { 
-//     if (result.error) console.log(result.error); 
-//     result_of_api = result.body;
-//     // console.log(result_of_api);
-//     res.status(200).send(result_of_api);
-//     });
-    
-// })
-
-// router.post("/detect", upload.single('food_image'), (req, res) => {
-//     const food_file = req.file;
-//     // console.log(food_file.buffer);
-//     // console.log(file);
-//     if(!food_file){
-//         res.status(400).json("");
-//     }
-//     let userRef2 = db.collection("food_scanned");
-//     var predicted, morethan1, totalcal;
-//     const imageData = food_file.buffer;
-//     const buffer = Buffer.from(imageData, 'base64');
-//     const data = new FormData();
-//     data.append('file', buffer, { filename: food_file.originalname });
-
-//     const url = 'https://modelml-2ge5ruq6qa-et.a.run.app/predict'; // Replace with your API endpoint URL
-
-//     axios.post(url, data, {
-//     headers:
-//         data.getHeaders(),
-//     })
-//     .then(response => {
-//         console.log('Response:', response.data);
-//     })
-//     .catch(error => {
-//         console.error('Error:', error.response.data);
-//     });
-// })
-
-//
-// router.get("/pushDatabase", (req, res) => {
-//         let userRef = db.collection("foods");
+    if(!bearer){
+        res.status(400).json({"message":"token required"});
+    }else{
+        token = bearer.split(" ")[1];
+        try {
+            var decoded = jwt.verify(token, secret);
+        } catch(err) {
+            // console.log(err);
+            res.status(400).json(err);
+        }
+        userRef.where("email","==",decoded.email).get().then(doc=>{
+        if (doc.empty) {
+            res.status(400).json({"message":"invalid token"})
+        }
         
-//         x=["a","b","ce"];
-//         if ( x.indexOf("x")==-1 ) {
-//             x.push("x");
-//         }
-//         userRef.doc("food_calories").update({test:x})
-//         .then(res.status(201).json({"message":"data added"}));
-    
-//     })
+        let predictions = [];
+        userRef2.where('user_id', '==', decoded.id).get().then(food=>{
+            food.forEach(food_doc =>{
+                predictions.push({
+                        "createdAt": food_doc.data().createdAt,
+                        "totalCalorie": food_doc.data().totalCalorie,
+                        "imageUrl": food_doc.data().imageUrl,
+                        "food": food_doc.data().food
+                    }
+                );
+            });
+            res.status(200).json(predictions);
+        });
+        
+    }).catch(error=> res.status(500).send(error));
+    }
+})
 
 module.exports = router
